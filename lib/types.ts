@@ -86,3 +86,44 @@ export type PlacesResponse = {
   };
   warning?: string;
 };
+
+export type ItineraryStep = {
+  placeId: string;
+  placeName: string;
+  category?: string;
+  distanceFromPrevKm?: number;
+  note: string;
+  weatherContext?: string;
+};
+
+export type AssistantItinerary = {
+  title: string;
+  estimatedTotalKm: number;
+  steps: ItineraryStep[];
+};
+
+export type NumericCalculations = {
+  placesCount: number;
+  placesByCategory: Record<string, number>;
+  reportsCount: number;
+  unverifiedReportsCount: number;
+  reviewedReportsCount: number;
+  reportsByCategory: Record<string, number>;
+  closestReportDistanceKm: number | null;
+  routeDistanceKm: number | null;
+};
+
+export type AssistantResponse = {
+  answer: string;
+  source: "gemini" | "deterministic_fallback";
+  model?: string;
+  recommendedPlaceIds: string[];
+  itinerary?: AssistantItinerary;
+  weatherObservation?: string;
+  safetySummary?: string;
+  affordabilityGuidance?: string;
+  numericCalculations: NumericCalculations;
+  disclaimer: string;
+  fallbackReason?: string;
+};
+

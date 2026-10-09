@@ -3,7 +3,17 @@
 import dynamic from "next/dynamic";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { demoPlaces, demoReports, distanceKm, filterLabels, incidentCategoryLabels, puneCenter } from "@/lib/data";
-import type { CitizenReport, CitySearchResult, Coordinates, IncidentCategory, Place, PlaceCategory, PlacesResponse, WeatherState } from "@/lib/types";
+import type {
+  AssistantResponse,
+  CitizenReport,
+  CitySearchResult,
+  Coordinates,
+  IncidentCategory,
+  Place,
+  PlaceCategory,
+  PlacesResponse,
+  WeatherState
+} from "@/lib/types";
 
 const CityMap = dynamic(() => import("@/components/CityMap"), {
   ssr: false,
@@ -39,7 +49,8 @@ export default function LiveCityPulseDashboard() {
   const [weatherState, setWeatherState] = useState<LoadState>("loading");
   const [weatherError, setWeatherError] = useState("");
   const [assistantQuestion, setAssistantQuestion] = useState("");
-  const [assistantAnswer, setAssistantAnswer] = useState("Ask about routes, neighborhood context, or what the current data can and cannot tell you.");
+  const [assistantAnswer, setAssistantAnswer] = useState("Ask about itineraries, weather-aware routes, budget spots, or route comparisons.");
+  const [assistantData, setAssistantData] = useState<AssistantResponse | null>(null);
   const [assistantState, setAssistantState] = useState<"idle" | "loading" | "error">("idle");
   const [compareA, setCompareA] = useState("");
   const [compareB, setCompareB] = useState("");
@@ -292,20 +303,55 @@ export default function LiveCityPulseDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          question: assistantQuestion.trim(),
           city,
-          selectedPlace: selectedPlace?.name,
-          weather: weather ? `${weather.summary}, ${Math.round(weather.temperature)}C from ${weather.source}` : undefined,
-          reports: nearbyReports.slice(0, 3).map((report) => `${report.title} (${report.status})`),
-          question: assistantQuestion
+          cityCenter,
+          selectedPlaceId: selectedPlace?.id,
+          places: places.slice(0, 15).map((p) => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            coordinates: p.coordinates,
+            area: p.area,
+            description: p.description,
+            source: p.source,
+            sourceUrl: p.sourceUrl,
+            tags: p.tags,
+            safetyNotes: p.safetyNotes,
+            budget: p.budget
+          })),
+          weather: weather
+            ? {
+                temperature: weather.temperature,
+                windSpeed: weather.windSpeed,
+                weatherCode: weather.weatherCode,
+                summary: weather.summary,
+                observedAt: weather.observedAt,
+                source: weather.source
+              }
+            : null,
+          reports: reports.slice(0, 15).map((r) => ({
+            id: r.id,
+            category: r.category,
+            title: r.title,
+            detail: r.detail,
+            coordinates: r.coordinates,
+            area: r.area,
+            createdAt: r.createdAt,
+            status: r.status,
+            moderationStatus: r.moderationStatus
+          })),
+          routePlaceIds: [compareA, compareB].filter(Boolean)
         })
       });
-      if (!response.ok) throw new Error("Assistant failed");
-      const data = (await response.json()) as { answer: string; missingCredential?: string };
-      setAssistantAnswer(data.missingCredential ? `${data.answer}\n\nMissing credential: ${data.missingCredential}.` : data.answer);
+      if (!response.ok) throw new Error("Assistant request failed");
+      const data = (await response.json()) as AssistantResponse;
+      setAssistantData(data);
+      setAssistantAnswer(data.answer);
       setAssistantState("idle");
     } catch {
       setAssistantState("error");
-      setAssistantAnswer("The assistant is unavailable. The map, weather panel and source-labeled reports still work.");
+      setAssistantAnswer("The assistant is temporarily unavailable. The map, weather panel and reports still work.");
     }
   }
 
@@ -631,16 +677,133 @@ export default function LiveCityPulseDashboard() {
             </section>
 
             <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft">
-              <h2 className="text-lg font-bold">AI Assistant</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-bold">AI Assistant</h2>
+                {assistantData && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                      assistantData.source === "gemini"
+                        ? "border-purple-200 bg-purple-50 text-purple-700"
+                        : "border-amber-200 bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        assistantData.source === "gemini" ? "bg-purple-600 animate-pulse" : "bg-amber-500"
+                      }`}
+                    ></span>
+                    {assistantData.source === "gemini"
+                      ? `Gemini ${assistantData.model || "Flash"}`
+                      : "Deterministic Fallback"}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                Grounds answers strictly in loaded OpenStreetMap POIs, Open-Meteo weather, and unverified reports.
+              </p>
               <form className="mt-3 space-y-2" onSubmit={askAssistant}>
-                <label className="sr-only" htmlFor="assistant-question">Ask CityPulse AI</label>
-                <textarea id="assistant-question" className="focus-ring min-h-24 w-full rounded-md border border-stone-300 p-3 text-sm" value={assistantQuestion} onChange={(event) => setAssistantQuestion(event.target.value)} placeholder="What can the current sources tell me about this area?" />
-                <button className="focus-ring w-full rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={assistantState === "loading"} type="submit">
-                  {assistantState === "loading" ? "Thinking" : "Ask assistant"}
+                <label className="sr-only" htmlFor="assistant-question">
+                  Ask CityPulse AI
+                </label>
+                <textarea
+                  id="assistant-question"
+                  className="focus-ring min-h-20 w-full rounded-md border border-stone-300 p-3 text-sm"
+                  value={assistantQuestion}
+                  onChange={(event) => setAssistantQuestion(event.target.value)}
+                  placeholder="e.g. Suggest a 3-stop food & heritage itinerary, or compare the selected route with current weather."
+                />
+                <button
+                  className="focus-ring w-full rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  disabled={assistantState === "loading"}
+                  type="submit"
+                >
+                  {assistantState === "loading" ? "Analyzing with Gemini..." : "Ask assistant"}
                 </button>
               </form>
-              {assistantState === "error" && <p className="mt-2 text-sm text-amber-700">Assistant request failed.</p>}
-              <p className="mt-3 whitespace-pre-line rounded-md bg-paper p-3 text-sm text-slate-700">{assistantAnswer}</p>
+              {assistantState === "error" && (
+                <p className="mt-2 text-sm text-amber-700">Assistant request encountered an error.</p>
+              )}
+              <div className="mt-3 whitespace-pre-line rounded-md bg-paper p-3 text-sm text-slate-800">
+                {assistantAnswer}
+              </div>
+
+              {/* Recommended Place Chips */}
+              {assistantData?.recommendedPlaceIds && assistantData.recommendedPlaceIds.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Recommended Stops (Click to view):</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {assistantData.recommendedPlaceIds.map((id) => {
+                      const place = places.find((p) => p.id === id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setSelectedPlaceId(id)}
+                          className={`rounded border px-2 py-1 text-xs font-medium transition ${
+                            selectedPlaceId === id
+                              ? "border-river bg-river text-white"
+                              : "border-stone-300 bg-white hover:bg-slate-50 text-slate-700"
+                          }`}
+                        >
+                          📍 {place ? place.name : id}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Verified Structured Itinerary */}
+              {assistantData?.itinerary && (
+                <div className="mt-3 rounded-md border border-purple-200 bg-purple-50/50 p-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-purple-900">
+                      🗺️ {assistantData.itinerary.title}
+                    </h3>
+                    <span className="text-xs font-semibold text-purple-700">
+                      Total: ~{assistantData.itinerary.estimatedTotalKm} km
+                    </span>
+                  </div>
+                  <ol className="mt-2 space-y-2 text-xs">
+                    {assistantData.itinerary.steps.map((step, idx) => (
+                      <li
+                        key={step.placeId + idx}
+                        onClick={() => setSelectedPlaceId(step.placeId)}
+                        className="cursor-pointer rounded border border-purple-100 bg-white p-2 shadow-sm transition hover:border-purple-300"
+                      >
+                        <div className="flex items-center justify-between font-semibold text-slate-900">
+                          <span>
+                            {idx + 1}. {step.placeName}
+                          </span>
+                          {step.distanceFromPrevKm !== undefined && (
+                            <span className="text-[10px] text-slate-500">
+                              +{step.distanceFromPrevKm} km
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-slate-600">{step.note}</p>
+                        {step.weatherContext && (
+                          <p className="mt-0.5 text-[10px] text-purple-600">
+                            🌤️ Weather context: {step.weatherContext}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* Numeric Grounding Stats */}
+              {assistantData?.numericCalculations && (
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                  <span>📊 {assistantData.numericCalculations.placesCount} POIs analyzed</span>
+                  <span>•</span>
+                  <span>
+                    ⚠️ {assistantData.numericCalculations.reportsCount} reports (
+                    {assistantData.numericCalculations.unverifiedReportsCount} unverified)
+                  </span>
+                </div>
+              )}
             </section>
           </aside>
         </section>
