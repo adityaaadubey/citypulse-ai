@@ -12,9 +12,11 @@
 
 ## 🌐 Live Production Deployment
 
-- **Live URL**: [https://city-five-chi.vercel.app](https://city-five-chi.vercel.app)
-- **Deployment Preview**: [https://city-b0pxb5xhp-adityaomprakashdubey-3717.vercel.app](https://city-b0pxb5xhp-adityaomprakashdubey-3717.vercel.app)
+- **Live URL**: [https://citypulse-ai-live.vercel.app](https://citypulse-ai-live.vercel.app)
+- **Alternate Live URL**: [https://citypulse-ai-app.vercel.app](https://citypulse-ai-app.vercel.app)
+- **Deployment Preview**: [https://city-five-chi.vercel.app](https://city-five-chi.vercel.app)
 - **GitHub Repository**: [https://github.com/adityaaadubey/citypulse-ai](https://github.com/adityaaadubey/citypulse-ai)
+
 
 ---
 
