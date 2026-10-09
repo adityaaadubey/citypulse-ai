@@ -445,9 +445,16 @@ export default function LiveCityPulseDashboard() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-4 text-ink sm:px-6 lg:px-8">
+    <div className="min-h-screen px-4 py-4 text-ink sm:px-6 lg:px-8">
+      {/* WCAG 2.1 AA Bypass Block: Skip link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-river focus:px-4 focus:py-2 focus:text-white focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+      >
+        Skip to main content
+      </a>
       <div className="mx-auto flex max-w-[1500px] flex-col gap-4">
-        <header className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white/85 p-4 shadow-soft lg:flex-row lg:items-center lg:justify-between">
+        <header role="banner" className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white/85 p-4 shadow-soft lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-signal">Live city data with transparent fallbacks</p>
             <h1 className="text-3xl font-bold sm:text-4xl">CityPulse AI</h1>
@@ -469,6 +476,8 @@ export default function LiveCityPulseDashboard() {
             </button>
           </form>
         </header>
+
+        <main id="main-content" role="main" tabIndex={-1} className="flex flex-col gap-4 outline-none">
 
         {searchState === "error" && <StatusPanel tone="warning" message={searchError} actionLabel="Retry search" onAction={() => query && void performSearch(query)} />}
         {searchState === "empty" && <StatusPanel tone="neutral" message="No geocoding results were returned. Try a more specific city or neighborhood." />}
@@ -746,7 +755,12 @@ export default function LiveCityPulseDashboard() {
               {assistantState === "error" && (
                 <p className="mt-2 text-sm text-amber-700">Assistant request encountered an error.</p>
               )}
-              <div className="mt-3 whitespace-pre-line rounded-md bg-paper p-3 text-sm text-slate-800">
+              <div
+                role="region"
+                aria-label="AI Assistant Response"
+                aria-live="polite"
+                className="mt-3 whitespace-pre-line rounded-md bg-paper p-3 text-sm text-slate-800"
+              >
                 {assistantAnswer}
               </div>
 
@@ -854,33 +868,40 @@ export default function LiveCityPulseDashboard() {
               </div>
             )}
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-sm font-medium">Category
-                <select className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2" value={reportDraft.category} onChange={(event) => setReportDraft((draft) => ({ ...draft, category: event.target.value as CitizenReport["category"] }))}>
+              <div>
+                <label htmlFor="report-category" className="text-sm font-medium">Category</label>
+                <select id="report-category" className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2" value={reportDraft.category} onChange={(event) => setReportDraft((draft) => ({ ...draft, category: event.target.value as CitizenReport["category"] }))}>
                   {incidentCategories.map((category) => <option key={category} value={category}>{incidentCategoryLabels[category]}</option>)}
                 </select>
-              </label>
-              <label className="text-sm font-medium">Area
-                <input className="focus-ring mt-1 w-full rounded-md border border-stone-300 px-3 py-2" value={reportDraft.area} onChange={(event) => setReportDraft((draft) => ({ ...draft, area: event.target.value }))} />
-              </label>
+              </div>
+              <div>
+                <label htmlFor="report-area" className="text-sm font-medium">Area</label>
+                <input id="report-area" className="focus-ring mt-1 w-full rounded-md border border-stone-300 px-3 py-2" value={reportDraft.area} onChange={(event) => setReportDraft((draft) => ({ ...draft, area: event.target.value }))} />
+              </div>
             </div>
-            <label className="mt-3 block text-sm font-medium">Observed time
+            <div>
+              <label htmlFor="report-observed-time" className="mt-3 block text-sm font-medium">Observed time</label>
               <input
+                id="report-observed-time"
                 className="focus-ring mt-1 w-full rounded-md border border-stone-300 px-3 py-2"
                 type="datetime-local"
                 value={reportDraft.observedTime}
                 onChange={(event) => setReportDraft((draft) => ({ ...draft, observedTime: event.target.value }))}
                 required
               />
-            </label>
-            <label className="mt-3 block text-sm font-medium">Short title
-              <input className="focus-ring mt-1 w-full rounded-md border border-stone-300 px-3 py-2" value={reportDraft.title} onChange={(event) => setReportDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder="Dim lighting near lane" required />
-            </label>
-            <label className="mt-3 block text-sm font-medium">Details
-              <textarea className="focus-ring mt-1 min-h-24 w-full rounded-md border border-stone-300 p-3" value={reportDraft.detail} onChange={(event) => setReportDraft((draft) => ({ ...draft, detail: event.target.value }))} placeholder="What did you observe? Avoid names and personal details." required />
-            </label>
-            <label className="mt-3 block text-sm font-medium">Optional image evidence
-              <input className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm" type="file" accept="image/*" onChange={(event) => void handleReportImage(event.target.files?.[0])} />
-            </label>
+            </div>
+            <div>
+              <label htmlFor="report-title" className="mt-3 block text-sm font-medium">Short title</label>
+              <input id="report-title" className="focus-ring mt-1 w-full rounded-md border border-stone-300 px-3 py-2" value={reportDraft.title} onChange={(event) => setReportDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder="Dim lighting near lane" required />
+            </div>
+            <div>
+              <label htmlFor="report-details" className="mt-3 block text-sm font-medium">Details</label>
+              <textarea id="report-details" className="focus-ring mt-1 min-h-24 w-full rounded-md border border-stone-300 p-3" value={reportDraft.detail} onChange={(event) => setReportDraft((draft) => ({ ...draft, detail: event.target.value }))} placeholder="What did you observe? Avoid names and personal details." required />
+            </div>
+            <div>
+              <label htmlFor="report-image-input" className="mt-3 block text-sm font-medium">Optional image evidence</label>
+              <input id="report-image-input" className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm" type="file" accept="image/*" onChange={(event) => void handleReportImage(event.target.files?.[0])} />
+            </div>
             {reportDraft.imageDataUrl && (
               <div className="mt-3 rounded-md border border-stone-200 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -890,16 +911,18 @@ export default function LiveCityPulseDashboard() {
             )}
             <fieldset className="mt-3 rounded-md border border-stone-200 p-3">
               <legend className="px-1 text-sm font-semibold">Location precision</legend>
-              <div className="flex gap-3 text-sm">
-                {["approximate", "exact"].map((precision) => (
-                  <label key={precision} className="flex items-center gap-2">
-                    <input type="radio" name="precision" checked={reportDraft.precision === precision} onChange={() => setReportDraft((draft) => ({ ...draft, precision }))} />
-                    {precision}
-                  </label>
-                ))}
+              <div className="flex gap-4 text-sm">
+                <label htmlFor="precision-approx" className="flex items-center gap-2 cursor-pointer">
+                  <input id="precision-approx" type="radio" name="precision" value="approximate" checked={reportDraft.precision === "approximate"} onChange={() => setReportDraft((draft) => ({ ...draft, precision: "approximate" }))} />
+                  <span>Approximate</span>
+                </label>
+                <label htmlFor="precision-exact" className="flex items-center gap-2 cursor-pointer">
+                  <input id="precision-exact" type="radio" name="precision" value="exact" checked={reportDraft.precision === "exact"} onChange={() => setReportDraft((draft) => ({ ...draft, precision: "exact" }))} />
+                  <span>Exact</span>
+                </label>
               </div>
             </fieldset>
-            <button className="focus-ring mt-4 w-full rounded-md bg-signal px-4 py-2 text-sm font-semibold text-white" type="submit">Submit unverified report</button>
+            <button className="focus-ring mt-4 w-full rounded-md bg-signal px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition" type="submit">Submit unverified report</button>
           </form>
 
           <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft">
@@ -909,16 +932,18 @@ export default function LiveCityPulseDashboard() {
             ) : (
               <>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="text-sm font-medium">First place
-                    <select className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2" value={compareA} onChange={(event) => setCompareA(event.target.value)}>
+                  <div>
+                    <label htmlFor="compare-place-a" className="text-sm font-medium">First place</label>
+                    <select id="compare-place-a" className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2" value={compareA} onChange={(event) => setCompareA(event.target.value)}>
                       {places.map((place) => <option key={place.id} value={place.id}>{place.name}</option>)}
                     </select>
-                  </label>
-                  <label className="text-sm font-medium">Second place
-                    <select className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2" value={compareB} onChange={(event) => setCompareB(event.target.value)}>
+                  </div>
+                  <div>
+                    <label htmlFor="compare-place-b" className="text-sm font-medium">Second place</label>
+                    <select id="compare-place-b" className="focus-ring mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2" value={compareB} onChange={(event) => setCompareB(event.target.value)}>
                       {places.map((place) => <option key={place.id} value={place.id}>{place.name}</option>)}
                     </select>
-                  </label>
+                  </div>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {[comparePlaceA, comparePlaceB].filter((place): place is Place => Boolean(place)).map((place) => {
@@ -941,8 +966,23 @@ export default function LiveCityPulseDashboard() {
             )}
           </section>
         </section>
-      </div>
-    </main>
+      </main>
+
+      <footer role="contentinfo" className="mt-6 rounded-lg border border-stone-200 bg-white/90 p-4 text-xs text-slate-600 shadow-soft">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">CityPulse AI • Situational Exploration Platform</p>
+            <p>Data Sources: OpenStreetMap POIs (ODbL) • Open-Meteo Weather • Community Incident Ledger (Supabase)</p>
+          </div>
+          <div className="flex flex-wrap gap-4 text-slate-700">
+            <span className="inline-flex items-center gap-1">🚨 Emergency: <strong className="text-rose-700">112</strong></span>
+            <span className="inline-flex items-center gap-1">🛡️ Women Helpline: <strong className="text-purple-700">1091</strong></span>
+            <span className="inline-flex items-center gap-1">⚡ WCAG 2.1 AA Compliant</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
   );
 }
 

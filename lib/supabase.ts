@@ -43,7 +43,7 @@ export function mapRowToCitizenReport(row: SupabaseReportRow): CitizenReport {
     moderationStatus: (row.moderation_status as CitizenReport["moderationStatus"]) || "pending_review",
     source: (row.source as CitizenReport["source"]) || "community_local",
     evidence: (row.evidence as CitizenReport["evidence"]) || "text",
-    imageDataUrl: row.image_url || undefined,
+    ...(row.image_url ? { imageDataUrl: row.image_url } : {}),
     isSeeded: Boolean(row.is_seeded)
   };
 }

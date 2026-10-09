@@ -52,11 +52,65 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const report = (await request.json()) as CitizenReport;
+    const rawReport = (await request.json()) as Partial<CitizenReport>;
 
-    if (!report.title || !report.detail || !report.coordinates) {
-      return NextResponse.json({ error: "Missing required report fields" }, { status: 400 });
+    // Strict validation
+    if (!rawReport.title || !rawReport.detail || !rawReport.coordinates) {
+      return NextResponse.json({ error: "Missing required report fields (title, detail, coordinates)" }, { status: 400 });
     }
+
+    const validCategories = ["safety_concerns", "waterlogging", "poor_lighting", "accident", "obstruction"];
+    const category = validCategories.includes(rawReport.category as string)
+      ? (rawReport.category as CitizenReport["category"])
+      : "safety_concerns";
+
+    // Sanitize strings against XSS
+    const sanitize = (text: string, maxLen: number) =>
+      text
+        .replace(/<[^>]*>?/gm, "")
+        .replace(/[<>'"&]/g, (char) => {
+          switch (char) {
+            case "<": return "&lt;";
+            case ">": return "&gt;";
+            case "'": return "&#39;";
+            case "\"": return "&quot;";
+            case "&": return "&amp;";
+            default: return char;
+          }
+        })
+        .trim()
+        .slice(0, maxLen);
+
+    const title = sanitize(String(rawReport.title), 100);
+    const detail = sanitize(String(rawReport.detail), 1000);
+    const area = sanitize(String(rawReport.area || "City"), 100);
+
+    // Validate coordinate boundaries
+    const lat = Number(rawReport.coordinates.lat);
+    const lng = Number(rawReport.coordinates.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return NextResponse.json({ error: "Invalid coordinates provided" }, { status: 400 });
+    }
+
+    const report: CitizenReport = {
+      id: rawReport.id && /^cp-[a-zA-Z0-9_-]+$/.test(rawReport.id)
+        ? rawReport.id
+        : `cp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      category,
+      title,
+      detail,
+      area,
+      coordinates: { lat, lng },
+      createdAt: rawReport.createdAt && !Number.isNaN(Date.parse(rawReport.createdAt))
+        ? rawReport.createdAt
+        : new Date().toISOString(),
+      status: "unverified",
+      moderationStatus: "pending_review",
+      source: "community_local",
+      evidence: rawReport.evidence === "text_image" ? "text_image" : "text",
+      imageDataUrl: rawReport.imageDataUrl?.startsWith("data:image/") ? rawReport.imageDataUrl : undefined,
+      isSeeded: false
+    };
 
     if (isSupabaseConfigured && supabase) {
       const row = mapCitizenReportToRow(report);
